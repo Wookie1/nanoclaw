@@ -188,7 +188,7 @@ function createPreCompactHook(assistantName?: string): HookCallback {
 // Secrets to strip from Bash tool subprocess environments.
 // These are needed by claude-code for API auth but should never
 // be visible to commands Kit runs.
-const SECRET_ENV_VARS = ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN'];
+const SECRET_ENV_VARS = ['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'OPENROUTER_API_KEY'];
 
 function createSanitizeBashHook(): HookCallback {
   return async (input, _toolUseId, _context) => {
@@ -513,6 +513,11 @@ async function main(): Promise<void> {
   const sdkEnv: Record<string, string | undefined> = { ...process.env };
   for (const [key, value] of Object.entries(containerInput.secrets || {})) {
     sdkEnv[key] = value;
+  }
+
+  if (sdkEnv['OPENROUTER_API_KEY'] && !sdkEnv['ANTHROPIC_API_KEY'] && !sdkEnv['CLAUDE_CODE_OAUTH_TOKEN']) {
+    sdkEnv['ANTHROPIC_API_KEY'] = sdkEnv['OPENROUTER_API_KEY'];
+    sdkEnv['ANTHROPIC_BASE_URL'] = 'https://openrouter.ai/api/v1';
   }
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
