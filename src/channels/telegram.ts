@@ -1,6 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+
 import { Bot } from 'grammy';
 
-import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
+import { ASSISTANT_NAME, GROUPS_DIR, TRIGGER_PATTERN } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
 import { registerChannel, ChannelOpts } from './registry.js';
@@ -94,8 +97,15 @@ export class TelegramChannel implements Channel {
       }
 
       // Store chat metadata for discovery
-      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
-      this.opts.onChatMetadata(chatJid, timestamp, chatName, 'telegram', isGroup);
+      const isGroup =
+        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        chatName,
+        'telegram',
+        isGroup,
+      );
 
       // Only deliver full message for registered groups
       const group = this.opts.registeredGroups()[chatJid];
@@ -138,8 +148,15 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
 
-      const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
-      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+      const isGroup =
+        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        undefined,
+        'telegram',
+        isGroup,
+      );
       this.opts.onMessage(chatJid, {
         id: ctx.message.message_id.toString(),
         chat_jid: chatJid,
@@ -153,13 +170,75 @@ export class TelegramChannel implements Channel {
 
     this.bot.on('message:photo', (ctx) => storeNonText(ctx, '[Photo]'));
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
-    this.bot.on('message:voice', (ctx) =>
-      storeNonText(ctx, '[Voice message]'),
-    );
+    this.bot.on('message:voice', (ctx) => storeNonText(ctx, '[Voice message]'));
     this.bot.on('message:audio', (ctx) => storeNonText(ctx, '[Audio]'));
-    this.bot.on('message:document', (ctx) => {
-      const name = ctx.message.document?.file_name || 'file';
-      storeNonText(ctx, `[Document: ${name}]`);
+    this.bot.on('message:document', async (ctx) => {
+      const doc = ctx.message.document;
+      const name = doc?.file_name || 'file';
+      const isPdf =
+        doc?.mime_type === 'application/pdf' ||
+        name.toLowerCase().endsWith('.pdf');
+
+      if (isPdf) {
+        const chatJid = `tg:${ctx.chat.id}`;
+        const group = this.opts.registeredGroups()[chatJid];
+        if (!group) return;
+
+        try {
+          const file = await ctx.getFile();
+          const url = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const buffer = Buffer.from(await resp.arrayBuffer());
+
+          const groupDir = path.join(GROUPS_DIR, group.folder);
+          const attachDir = path.join(groupDir, 'attachments');
+          fs.mkdirSync(attachDir, { recursive: true });
+          const filename = path.basename(name);
+          const filePath = path.join(attachDir, filename);
+          fs.writeFileSync(filePath, buffer);
+          const sizeKB = Math.round(buffer.length / 1024);
+          const pdfRef = `[PDF: attachments/${filename} (${sizeKB}KB)]\nUse: pdf-reader extract attachments/${filename}`;
+          const caption = ctx.message.caption || '';
+          const content = caption ? `${caption}\n\n${pdfRef}` : pdfRef;
+
+          logger.info({ jid: chatJid, filename }, 'Downloaded PDF attachment');
+
+          const timestamp = new Date(ctx.message.date * 1000).toISOString();
+          const senderName =
+            ctx.from?.first_name ||
+            ctx.from?.username ||
+            ctx.from?.id?.toString() ||
+            'Unknown';
+
+          const isGroup =
+            ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+          this.opts.onChatMetadata(
+            chatJid,
+            timestamp,
+            undefined,
+            'telegram',
+            isGroup,
+          );
+          this.opts.onMessage(chatJid, {
+            id: ctx.message.message_id.toString(),
+            chat_jid: chatJid,
+            sender: ctx.from?.id?.toString() || '',
+            sender_name: senderName,
+            content,
+            timestamp,
+            is_from_me: false,
+          });
+        } catch (err) {
+          logger.warn(
+            { err, jid: chatJid },
+            'Failed to download PDF attachment',
+          );
+          storeNonText(ctx, `[Document: ${name}]`);
+        }
+      } else {
+        storeNonText(ctx, `[Document: ${name}]`);
+      }
     });
     this.bot.on('message:sticker', (ctx) => {
       const emoji = ctx.message.sticker?.emoji || '';

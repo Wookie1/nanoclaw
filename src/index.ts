@@ -200,6 +200,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     }, IDLE_TIMEOUT);
   };
 
+  await channel.sendMessage(chatJid, '⚡');
   await channel.setTyping?.(chatJid, true);
   let hadError = false;
   let outputSentToUser = false;
@@ -552,6 +553,21 @@ async function main(): Promise<void> {
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
+    },
+    sendFile: async (jid, filename, content, comment) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) {
+        logger.warn({ jid }, 'No channel owns JID, cannot send file');
+        return;
+      }
+      if (!channel.sendFile) {
+        logger.warn(
+          { jid, channel: channel.name },
+          'Channel does not support file sending',
+        );
+        return;
+      }
+      await channel.sendFile(jid, filename, content, comment);
     },
     registeredGroups: () => registeredGroups,
     registerGroup,

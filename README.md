@@ -62,23 +62,24 @@ Then run `/setup`. Claude Code handles everything: dependencies, authentication,
 - **Web access** - Search and fetch content from the Web
 - **Container isolation** - Agents are sandboxed in Apple Container (macOS) or Docker (macOS/Linux)
 - **Agent Swarms** - Spin up teams of specialized agents that collaborate on complex tasks. NanoClaw is the first personal AI assistant to support agent swarms.
+- **File delivery** - Agents can send HTML reports, CSVs, and other files directly to channels via `mcp__nanoclaw__send_file`
 - **Optional integrations** - Add Gmail (`/add-gmail`) and more via skills
 
 ## Usage
 
-Talk to your assistant with the trigger word (default: `@Andy`):
+Talk to your assistant with the trigger word (default: `@Claw`):
 
 ```
-@Andy send an overview of the sales pipeline every weekday morning at 9am (has access to my Obsidian vault folder)
-@Andy review the git history for the past week each Friday and update the README if there's drift
-@Andy every Monday at 8am, compile news on AI developments from Hacker News and TechCrunch and message me a briefing
+@Claw send an overview of the sales pipeline every weekday morning at 9am (has access to my Obsidian vault folder)
+@Claw review the git history for the past week each Friday and update the README if there's drift
+@Claw every Monday at 8am, compile news on AI developments from Hacker News and TechCrunch and message me a briefing
 ```
 
 From the main channel (your self-chat), you can manage groups and tasks:
 ```
-@Andy list all scheduled tasks across groups
-@Andy pause the Monday briefing task
-@Andy join the Family Chat group
+@Claw list all scheduled tasks across groups
+@Claw pause the Monday briefing task
+@Claw join the Family Chat group
 ```
 
 ## Customizing
