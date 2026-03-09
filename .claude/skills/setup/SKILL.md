@@ -122,15 +122,15 @@ AskUserQuestion: Claude subscription (Pro/Max) vs Anthropic API key?
 
 **API key:** Tell user to add `ANTHROPIC_API_KEY=<key>` to `.env`.
 
-## 5. Install Skills Marketplace
+## 5. Register Skills Marketplace
 
-Install the official skills marketplace plugin so feature skills (channel integrations, add-ons) are available:
+Register the NanoClaw skills marketplace so channel skills can be installed:
 
 ```bash
-claude plugin install nanoclaw-skills@nanoclaw-skills --scope project
+claude plugin marketplace add qwibitai/nanoclaw-skills
 ```
 
-This is hot-loaded — no restart needed. All feature skills become immediately available.
+If already registered, this is a no-op. Verify with `claude plugin marketplace list`.
 
 ## 6. Set Up Channels
 
@@ -140,14 +140,14 @@ AskUserQuestion (multiSelect): Which messaging channels do you want to enable?
 - Slack (authenticates via Slack app with Socket Mode)
 - Discord (authenticates via Discord bot token)
 
-**Delegate to each selected channel's own skill.** Each channel skill handles its own code installation, authentication, registration, and JID resolution. This avoids duplicating channel-specific logic and ensures JIDs are always correct.
+**Install and invoke each selected channel's skill.** Each channel skill handles its own code installation, authentication, registration, and JID resolution.
 
-For each selected channel, invoke its skill:
+For each selected channel, first install the skill from the marketplace, then invoke it:
 
-- **WhatsApp:** Invoke `/add-whatsapp`
-- **Telegram:** Invoke `/add-telegram`
-- **Slack:** Invoke `/add-slack`
-- **Discord:** Invoke `/add-discord`
+- **WhatsApp:** `claude plugin install add-whatsapp@nanoclaw-skills --scope project` → Invoke `/add-whatsapp`
+- **Telegram:** `claude plugin install add-telegram@nanoclaw-skills --scope project` → Invoke `/add-telegram`
+- **Slack:** `claude plugin install add-slack@nanoclaw-skills --scope project` → Invoke `/add-slack`
+- **Discord:** `claude plugin install add-discord@nanoclaw-skills --scope project` → Invoke `/add-discord`
 
 Each skill will:
 1. Install the channel code (via `git merge` of the skill branch)
