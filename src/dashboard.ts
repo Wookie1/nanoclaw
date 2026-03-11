@@ -12,7 +12,14 @@ import { GROUPS_DIR, STORE_DIR } from './config.js';
 import Database from 'better-sqlite3';
 
 export type DashboardEvent =
-  | { type: 'message'; group: string; sender: string; content: string; timestamp: number; isBot: boolean }
+  | {
+      type: 'message';
+      group: string;
+      sender: string;
+      content: string;
+      timestamp: number;
+      isBot: boolean;
+    }
   | { type: 'agent_start'; group: string }
   | { type: 'agent_end'; group: string; success: boolean };
 
@@ -64,11 +71,18 @@ async function handleRequest(
   const method = req.method ?? 'GET';
 
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, PUT, PATCH, DELETE, OPTIONS',
+  );
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 'no-store');
 
-  if (method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  if (method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
   if (method === 'GET' && (p === '/' || p === '/index.html')) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -79,18 +93,27 @@ async function handleRequest(
   res.setHeader('Content-Type', 'application/json');
 
   if (method === 'GET' && p === '/api/status') {
-    res.end(JSON.stringify({ channels: getChannelStatus(), uptime: process.uptime() * 1000 }));
+    res.end(
+      JSON.stringify({
+        channels: getChannelStatus(),
+        uptime: process.uptime() * 1000,
+      }),
+    );
     return;
   }
 
   if (method === 'GET' && p === '/api/groups') {
-    const groups = db.prepare(`
+    const groups = db
+      .prepare(
+        `
       SELECT rg.folder, rg.name, rg.jid, rg.is_main, rg.requires_trigger, rg.trigger_pattern,
              c.last_message_time, c.name as chat_name
       FROM registered_groups rg
       LEFT JOIN chats c ON c.jid = rg.jid
       ORDER BY rg.is_main DESC, c.last_message_time DESC
-    `).all();
+    `,
+      )
+      .all();
     res.end(JSON.stringify({ groups }));
     return;
   }
@@ -98,13 +121,26 @@ async function handleRequest(
   const msgM = p.match(/^\/api\/groups\/([^/]+)\/messages$/);
   if (method === 'GET' && msgM) {
     const folder = decodeURIComponent(msgM[1]);
-    const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '100', 10), 500);
-    const row = db.prepare('SELECT jid FROM registered_groups WHERE folder = ?').get(folder) as { jid: string } | undefined;
-    if (!row) { res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return; }
-    const messages = db.prepare(`
+    const limit = Math.min(
+      parseInt(url.searchParams.get('limit') ?? '100', 10),
+      500,
+    );
+    const row = db
+      .prepare('SELECT jid FROM registered_groups WHERE folder = ?')
+      .get(folder) as { jid: string } | undefined;
+    if (!row) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
+    const messages = db
+      .prepare(
+        `
       SELECT sender, sender_name, content, timestamp, is_from_me, is_bot_message
       FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT ?
-    `).all(row.jid, limit);
+    `,
+      )
+      .all(row.jid, limit);
     res.end(JSON.stringify({ messages: (messages as unknown[]).reverse() }));
     return;
   }
@@ -114,7 +150,11 @@ async function handleRequest(
     const folder = decodeURIComponent(memM[1]);
     const memPath = join(GROUPS_DIR, folder, 'CLAUDE.md');
     if (method === 'GET') {
-      res.end(JSON.stringify({ content: existsSync(memPath) ? readFileSync(memPath, 'utf8') : '' }));
+      res.end(
+        JSON.stringify({
+          content: existsSync(memPath) ? readFileSync(memPath, 'utf8') : '',
+        }),
+      );
       return;
     }
     if (method === 'PUT') {
@@ -126,30 +166,40 @@ async function handleRequest(
   }
 
   if (method === 'GET' && p === '/api/tasks') {
-    const tasks = db.prepare(`
+    const tasks = db
+      .prepare(
+        `
       SELECT t.id, t.group_folder, t.prompt, t.schedule_type, t.schedule_value,
              t.next_run, t.last_run, t.last_result, t.status, t.created_at,
              rg.name as group_name
       FROM scheduled_tasks t
       LEFT JOIN registered_groups rg ON rg.folder = t.group_folder
       ORDER BY (t.status = 'active') DESC, t.next_run ASC
-    `).all();
+    `,
+      )
+      .all();
     res.end(JSON.stringify({ tasks }));
     return;
   }
 
   const logsM = p.match(/^\/api\/tasks\/([^/]+)\/logs$/);
   if (method === 'GET' && logsM) {
-    const logs = db.prepare(`
+    const logs = db
+      .prepare(
+        `
       SELECT id, run_at, status, duration_ms, result, error
       FROM task_run_logs WHERE task_id = ? ORDER BY run_at DESC LIMIT 50
-    `).all(logsM[1]);
+    `,
+      )
+      .all(logsM[1]);
     res.end(JSON.stringify({ logs }));
     return;
   }
 
   if (method === 'DELETE' && p === '/api/tasks/completed') {
-    const completed = db.prepare(`SELECT id FROM scheduled_tasks WHERE status = 'completed'`).all() as { id: number }[];
+    const completed = db
+      .prepare(`SELECT id FROM scheduled_tasks WHERE status = 'completed'`)
+      .all() as { id: number }[];
     for (const { id } of completed) {
       db.prepare('DELETE FROM task_run_logs WHERE task_id = ?').run(id);
       db.prepare('DELETE FROM scheduled_tasks WHERE id = ?').run(id);
@@ -163,8 +213,15 @@ async function handleRequest(
     const id = taskM[1];
     if (method === 'PATCH') {
       const { status } = JSON.parse(await readBody(req));
-      if (!['active', 'paused'].includes(status)) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid status' })); return; }
-      db.prepare('UPDATE scheduled_tasks SET status = ? WHERE id = ?').run(status, id);
+      if (!['active', 'paused'].includes(status)) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Invalid status' }));
+        return;
+      }
+      db.prepare('UPDATE scheduled_tasks SET status = ? WHERE id = ?').run(
+        status,
+        id,
+      );
       res.end(JSON.stringify({ ok: true }));
       return;
     }

@@ -96,9 +96,7 @@ function createSchema(database: Database.Database): void {
 
   // Add invoker_group column if it doesn't exist (migration for existing DBs)
   try {
-    database.exec(
-      `ALTER TABLE scheduled_tasks ADD COLUMN invoker_group TEXT`,
-    );
+    database.exec(`ALTER TABLE scheduled_tasks ADD COLUMN invoker_group TEXT`);
   } catch {
     /* column already exists */
   }

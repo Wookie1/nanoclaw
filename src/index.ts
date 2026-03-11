@@ -235,7 +235,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     }
   });
 
-  broadcast({ type: 'agent_end', group: group.folder, success: !hadError && output !== 'error' });
+  broadcast({
+    type: 'agent_end',
+    group: group.folder,
+    success: !hadError && output !== 'error',
+  });
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
 
@@ -546,8 +550,8 @@ async function main(): Promise<void> {
   }
 
   // Start dashboard
-  broadcast = startDashboard(
-    () => channels.map((ch) => ({ name: ch.name, connected: ch.isConnected() })),
+  broadcast = startDashboard(() =>
+    channels.map((ch) => ({ name: ch.name, connected: ch.isConnected() })),
   );
 
   // Start subsystems (independently of connection handler)
