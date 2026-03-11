@@ -66,6 +66,9 @@ export interface ScheduledTask {
   last_result: string | null;
   status: 'active' | 'paused' | 'completed';
   created_at: string;
+  // The group folder that scheduled this task. Set when a main agent schedules
+  // a task for a different group, allowing the target agent to identify the caller.
+  invoker_group?: string | null;
 }
 
 export interface TaskRunLog {

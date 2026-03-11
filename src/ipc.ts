@@ -291,6 +291,10 @@ export async function processTaskIpc(
           data.context_mode === 'group' || data.context_mode === 'isolated'
             ? data.context_mode
             : 'isolated';
+        // Track who scheduled this task. When a main agent schedules for a
+        // different group, the target agent can identify the caller via invoker_group.
+        const invokerGroup =
+          sourceGroup !== targetFolder ? sourceGroup : null;
         createTask({
           id: taskId,
           group_folder: targetFolder,
@@ -302,6 +306,7 @@ export async function processTaskIpc(
           next_run: nextRun,
           status: 'active',
           created_at: new Date().toISOString(),
+          invoker_group: invokerGroup,
         });
         logger.info(
           { taskId, sourceGroup, targetFolder, contextMode },

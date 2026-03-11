@@ -19,6 +19,8 @@ const TASKS_DIR = path.join(IPC_DIR, 'tasks');
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
 const groupFolder = process.env.NANOCLAW_GROUP_FOLDER!;
 const isMain = process.env.NANOCLAW_IS_MAIN === '1';
+// Set when this agent was invoked by a different (main) group.
+const invokerGroup = process.env.NANOCLAW_INVOKER_GROUP || null;
 
 function writeIpcFile(dir: string, data: object): string {
   fs.mkdirSync(dir, { recursive: true });
@@ -522,6 +524,38 @@ Use available_groups.json to find the JID for a group. The folder name must be c
         {
           type: 'text' as const,
           text: `Group "${args.name}" registered. It will start receiving messages immediately.`,
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
+  'get_context',
+  `Return this agent's identity and caller information.
+
+Useful when you need to know:
+- Which group you are running in (groupFolder, chatJid)
+- Whether you are the main group (isMain)
+- Who scheduled this task (invokerGroup) — set when a main agent schedules a task for your group
+
+invokerGroup is the folder name of the agent that created this task. If set, the task was authorized by that group's agent (which must be main to schedule cross-group tasks). You can use this to trust actions that came from main.`,
+  {},
+  async () => {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(
+            {
+              groupFolder,
+              chatJid,
+              isMain,
+              invokerGroup,
+            },
+            null,
+            2,
+          ),
         },
       ],
     };

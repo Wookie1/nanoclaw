@@ -33,6 +33,7 @@ interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   secrets?: Record<string, string>;
+  invokerGroup?: string;
 }
 
 interface ContainerOutput {
@@ -511,6 +512,9 @@ async function runQuery(
             NANOCLAW_CHAT_JID: containerInput.chatJid,
             NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
             NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
+            ...(containerInput.invokerGroup
+              ? { NANOCLAW_INVOKER_GROUP: containerInput.invokerGroup }
+              : {}),
           },
         },
         ollama: {

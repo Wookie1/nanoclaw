@@ -39,6 +39,9 @@ export interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   secrets?: Record<string, string>;
+  // The group folder that scheduled this task (set for cross-group tasks from main).
+  // Allows the target agent to identify the caller via NANOCLAW_INVOKER_GROUP.
+  invokerGroup?: string;
 }
 
 export interface ContainerOutput {

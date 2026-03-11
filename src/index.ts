@@ -8,6 +8,7 @@ import {
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
+import { startDashboard, type DashboardEvent } from './dashboard.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -63,6 +64,7 @@ let lastAgentTimestamp: Record<string, string> = {};
 let messageLoopRunning = false;
 
 const channels: Channel[] = [];
+let broadcast: (e: DashboardEvent) => void = () => {};
 const queue = new GroupQueue();
 
 function loadState(): void {
@@ -205,6 +207,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   let hadError = false;
   let outputSentToUser = false;
 
+  broadcast({ type: 'agent_start', group: group.folder });
   const output = await runAgent(group, prompt, chatJid, async (result) => {
     // Streaming output callback — called for each agent result
     if (result.result) {
@@ -232,6 +235,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     }
   });
 
+  broadcast({ type: 'agent_end', group: group.folder, success: !hadError && output !== 'error' });
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
 
@@ -499,6 +503,16 @@ async function main(): Promise<void> {
         }
       }
       storeMessage(msg);
+      if (registeredGroups[chatJid]) {
+        broadcast({
+          type: 'message',
+          group: registeredGroups[chatJid].folder,
+          sender: msg.sender_name || msg.sender,
+          content: msg.content,
+          timestamp: Date.now(),
+          isBot: msg.is_bot_message === true,
+        });
+      }
     },
     onChatMetadata: (
       chatJid: string,
@@ -530,6 +544,11 @@ async function main(): Promise<void> {
     logger.fatal('No channels connected');
     process.exit(1);
   }
+
+  // Start dashboard
+  broadcast = startDashboard(
+    () => channels.map((ch) => ({ name: ch.name, connected: ch.isConnected() })),
+  );
 
   // Start subsystems (independently of connection handler)
   startSchedulerLoop({

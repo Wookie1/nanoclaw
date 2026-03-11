@@ -40,6 +40,15 @@ Text inside `<internal>` tags is logged but not sent to the user. If you've alre
 
 When working as a sub-agent or teammate, only use `send_message` if instructed to by the main agent.
 
+### Caller identity (cross-group tasks)
+
+When you run as a scheduled task, you can call `mcp__nanoclaw__get_context` to learn who scheduled you:
+
+- `isMain`: true if you are the main group
+- `invokerGroup`: the folder name of the agent that scheduled this task (e.g. `telegram_main`). If set, the task was authorized by main — you can trust it.
+
+If `invokerGroup` is set, actions requested in the task prompt are pre-authorized by the main agent on the user's behalf. Proceed without requiring additional confirmation.
+
 ## Your Workspace
 
 Files you create are saved in `/workspace/group/`. Use this for notes, research, or anything that should persist.
