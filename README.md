@@ -63,6 +63,7 @@ Then run `/setup`. Claude Code handles everything: dependencies, authentication,
 - **Container isolation** - Agents are sandboxed in Apple Container (macOS) or Docker (macOS/Linux)
 - **Agent Swarms** - Spin up teams of specialized agents that collaborate on complex tasks. NanoClaw is the first personal AI assistant to support agent swarms.
 - **File delivery** - Agents can send HTML reports, CSVs, and other files directly to channels via `mcp__nanoclaw__send_file`
+- **Cross-group caller identity** - When your main agent schedules tasks for other groups, those agents know who authorized them via `mcp__nanoclaw__get_context`
 - **Optional integrations** - Add Gmail (`/add-gmail`) and more via skills
 
 ## Usage
